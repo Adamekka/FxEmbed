@@ -49,3 +49,5 @@ The supplied branding image is served as a Worker static asset at
 `https://api.kirkyx.com/kirkyx.png`. The favicon and activity icon use this URL,
 so they remain available when the homepage moves to Pages. Files from
 `assets/branding` are [served before the embed router](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/).
+An asset rewrite serves `/favicon.ico` from the same PNG without passing through
+the embed cache or making a Worker-to-Worker HTTP request.
