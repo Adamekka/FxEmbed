@@ -2,21 +2,14 @@
   "zones": [
     {
       "name": "kirkyx",
-      "emojiId": "1554261513970385007",
       "default": true,
       "domains": ["fxtwitter.com", "twittpr.com"],
       "provider": "twitter",
-      "favicon": "https://abs.twimg.com/favicons/twitter.2.ico",
+      "favicon": "https://api.kirkyx.com/kirkyx.png",
       "redirect": "https://kirkyx.com",
       "color": "#6363ff",
       "activityIcons": {
-        "default": "https://assets.fxembed.com/logos/fxtwitter32.png",
-        "svg": "https://assets.fxembed.com/logos/fxtwitter.svg",
-        "16": "https://assets.fxembed.com/logos/fxtwitter16.png",
-        "24": "https://assets.fxembed.com/logos/fxtwitter24.png",
-        "32": "https://assets.fxembed.com/logos/fxtwitter32.png",
-        "48": "https://assets.fxembed.com/logos/fxtwitter48.png",
-        "64": "https://assets.fxembed.com/logos/fxtwitter64.png"
+        "default": "https://api.kirkyx.com/kirkyx.png"
       }
     },
     {
