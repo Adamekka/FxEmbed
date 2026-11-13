@@ -31,3 +31,14 @@ gh secret set FXEMBED_ENV --repo Adamekka/FxEmbed < .env
 
 Daily upstream rebases also push to `main` after their checks pass, so they
 trigger the same test and deployment sequence.
+
+## Homepage
+
+The homepage will be hosted by a separate Cloudflare Pages project. Until that
+project is connected, the embed Worker returns a plain 404 at `/`. Branding
+links point to `https://kirkyx.com`.
+
+Connecting Pages requires both its custom-domain DNS configuration and a change
+to the current `kirkyx.com/*` Worker route. The homepage, website pages, and
+static assets must reach Pages while social embed paths continue to reach the
+Worker. Changing DNS alone will not bypass the current catch-all Worker route.
