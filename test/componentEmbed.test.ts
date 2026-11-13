@@ -351,7 +351,7 @@ describe('component embed builder', () => {
     });
     expect((footer.components as AnyComponent[]).map(component => component.content)).toEqual([
       '-# <:Replies:1554338278545825812> 1    <:Reposts:1554354865013260411> 2    <:Likes:1554338262116737044> 10',
-      '-# <:FxTwitter:1554261513970385007> **FxTwitter** · <t:1704110400:f>'
+      '-# <:kirkyx:1554261513970385007> **kirkyx** · <t:1704110400:f>'
     ]);
   });
 
