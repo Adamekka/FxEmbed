@@ -1,0 +1,33 @@
+# Automatic deployment
+
+Pushes to this fork's `main` branch run the Tests workflow. A successful test run
+triggers deployment of that exact commit to the `kirkyx` Cloudflare Worker.
+Pull request test runs cannot trigger deployment. Deployments run one at a time;
+an older tested commit is skipped if a newer commit is already on `main`.
+
+The instance configuration stays outside Git and is restored from repository
+Actions settings before the build:
+
+| Setting                | Storage  | Contents                                                        |
+| ---------------------- | -------- | --------------------------------------------------------------- |
+| `FXEMBED_WRANGLER`     | Variable | Local `wrangler.toml`, including account and routes             |
+| `FXEMBED_BRANDING`     | Variable | Local `branding.json`                                           |
+| `FXEMBED_ENV`          | Secret   | Local `.env`, including domain lists and service settings       |
+| `CLOUDFLARE_API_TOKEN` | Secret   | Cloudflare token authorized to deploy the Worker and its routes |
+
+All four settings are required. The Cloudflare token should be restricted to
+the deployment account and the `kirkyx.com` zone. It needs permission to edit
+Workers scripts and routes and read the account and zone settings. Deployment
+uses the existing proxied DNS record for the apex and Custom Domains for the
+API and embed modifier subdomains.
+
+To update the configuration from local files:
+
+```sh
+gh variable set FXEMBED_WRANGLER --repo Adamekka/FxEmbed < wrangler.toml
+gh variable set FXEMBED_BRANDING --repo Adamekka/FxEmbed < branding.json
+gh secret set FXEMBED_ENV --repo Adamekka/FxEmbed < .env
+```
+
+Daily upstream rebases also push to `main` after their checks pass, so they
+trigger the same test and deployment sequence.
