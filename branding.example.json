@@ -1,7 +1,7 @@
 {
   "zones": [
     {
-      "name": "FxTwitter",
+      "name": "kirkyx",
       "emojiId": "1554261513970385007",
       "default": true,
       "domains": ["fxtwitter.com", "twittpr.com"],
