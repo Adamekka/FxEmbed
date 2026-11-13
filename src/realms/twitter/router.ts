@@ -62,6 +62,13 @@ export const faviconRoute = async (c: Context) => {
 const twitterStatusRequest = async (c: Context) => await statusRequest(c);
 const _profileRequest = async (c: Context) => await profileRequest(c);
 
+// Reserve the original homepage for Pages before realm prefixes trigger slash redirects.
+twitter.use('*', (c, next) => {
+  if (new URL(c.req.url).pathname === '/') {
+    return c.text('Not found', 404);
+  }
+  return next();
+});
 twitter.use(trimTrailingSlash());
 twitter.get('/api/v1/statuses/:id', activityRequest);
 twitter.get('/:endpoint{status(es)?|article}/:id', twitterStatusRequest);
