@@ -7,7 +7,7 @@
       "domains": ["fxtwitter.com", "twittpr.com"],
       "provider": "twitter",
       "favicon": "https://abs.twimg.com/favicons/twitter.2.ico",
-      "redirect": "https://github.com/FxEmbed/FxEmbed",
+      "redirect": "https://kirkyx.com",
       "color": "#6363ff",
       "activityIcons": {
         "default": "https://assets.fxembed.com/logos/fxtwitter32.png",
