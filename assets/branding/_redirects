@@ -1,0 +1,2 @@
+# Serve the favicon directly without the legacy cache or a Worker-to-Worker fetch.
+/favicon.ico /kirkyx.png 200
