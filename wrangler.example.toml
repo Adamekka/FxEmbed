@@ -12,5 +12,10 @@ analytics_engine_datasets = [
 # Use .env to configure environment variables, not wrangler.toml
 # except CREDENTIAL_KEY and EXCEPTION_DISCORD_WEBHOOK, which should be set using `wrangler secret put CREDENTIAL_KEY`
 
+# Serve branding images before requests reach the embed router.
+[assets]
+directory = "./assets/branding"
+run_worker_first = false
+
 [build]
 command = "npm run build"
