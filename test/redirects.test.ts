@@ -1,9 +1,9 @@
 import { test, expect } from 'vitest';
 import { app } from '../src/worker';
 import harness from './helpers/harness';
-import { botHeaders, githubUrl, humanHeaders, twitterBaseUrl } from './helpers/data';
+import { botHeaders, humanHeaders, twitterBaseUrl } from './helpers/data';
 
-test('Home page redirect', async () => {
+test('Home page returns 404 while the separate website is unconfigured', async () => {
   const result = await app.request(
     new Request('https://fxtwitter.com', {
       method: 'GET',
@@ -20,10 +20,10 @@ test('Home page redirect', async () => {
     undefined,
     harness
   );
-  expect(result.status).toEqual(302);
-  expect(result.headers.get('location')).toEqual(githubUrl);
-  expect(resultHuman.status).toEqual(302);
-  expect(resultHuman.headers.get('location')).toEqual(githubUrl);
+  expect(result.status).toEqual(404);
+  expect(result.headers.get('location')).toBeNull();
+  expect(resultHuman.status).toEqual(404);
+  expect(resultHuman.headers.get('location')).toBeNull();
 });
 
 test('Status redirect human', async () => {
