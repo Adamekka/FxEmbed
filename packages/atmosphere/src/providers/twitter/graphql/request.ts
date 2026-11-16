@@ -18,6 +18,8 @@ interface GraphQLRequest {
   validator: (response: unknown) => boolean;
   variables: Record<string, unknown>;
   useElongator?: boolean;
+  /** Adds a unique query parameter so X's edge cache cannot answer the request. */
+  bypassEdgeCache?: boolean;
   /** Merged last into twitterFetch headers (e.g. `x-twitter-client-language`). */
   headers?: Record<string, string>;
 }
@@ -39,6 +41,10 @@ export const graphqlRequest = async (
   }
   if (query.fieldToggles) {
     url += `&fieldToggles=${encodeURIComponent(JSON.stringify(query.fieldToggles))}`;
+  }
+  if (request.bypassEdgeCache) {
+    // X ignores unknown query parameters, but its edge cache keys on the full URL.
+    url += `&_=${crypto.randomUUID()}`;
   }
   return twitterFetch(host, {
     url,
