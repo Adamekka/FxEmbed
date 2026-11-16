@@ -254,7 +254,10 @@ export const handleStatus = async (
         thread.code === 404 ? Strings.ERROR_TWEET_NOT_FOUND : Strings.ERROR_BLUESKY_UNAVAILABLE
       );
     } else {
-      return returnError(c, Strings.ERROR_TWEET_NOT_FOUND);
+      return returnError(
+        c,
+        thread.code === 500 ? Strings.ERROR_API_FAIL : Strings.ERROR_TWEET_NOT_FOUND
+      );
     }
   }
 
