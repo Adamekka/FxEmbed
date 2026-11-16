@@ -275,45 +275,57 @@ export const fetchByRestId = async (
   }),
   language?: string
 ): Promise<TweetResultByRestIdResponse> => {
-  return graphqlRequest(host, {
-    query: TweetResultByRestIdQuery,
-    variables: {
-      tweetId: status
-    },
-    useElongator: useElongator,
-    headers: buildLanguageHeaders(language),
-    validator: (_conversation: unknown) => {
-      const conversation = _conversation as TweetResultByRestIdResponse;
-      // If we get a not found error it's still a valid response
-      const tweet = conversation?.data?.tweetResult?.result;
-      if (isGraphQLTwitterStatus(tweet)) {
-        return true;
+  const isNotFound = (conversation: TweetResultByRestIdResponse | null) =>
+    typeof conversation?.data?.tweetResult === 'object' &&
+    Object.keys(conversation.data.tweetResult || {}).length === 0;
+  const request = (bypassEdgeCache: boolean) =>
+    graphqlRequest(host, {
+      query: TweetResultByRestIdQuery,
+      variables: {
+        tweetId: status
+      },
+      useElongator: useElongator,
+      bypassEdgeCache: bypassEdgeCache,
+      headers: buildLanguageHeaders(language),
+      validator: (_conversation: unknown) => {
+        const conversation = _conversation as TweetResultByRestIdResponse;
+        // If we get a not found error it's still a valid response
+        const tweet = conversation?.data?.tweetResult?.result;
+        if (isGraphQLTwitterStatus(tweet)) {
+          return true;
+        }
+        console.log('invalid graphql tweet');
+        if (!tweet && isNotFound(conversation)) {
+          console.log('tweet was not found');
+          return true;
+        }
+        if (tweet?.__typename === 'TweetUnavailable' && tweet.reason === 'NsfwLoggedOut') {
+          console.log('status is nsfw');
+          return true;
+        }
+        if (tweet?.__typename === 'TweetUnavailable' && tweet.reason === 'Protected') {
+          console.log('status is protected');
+          return true;
+        }
+        if (tweet?.__typename === 'TweetUnavailable') {
+          console.log('generic tweet unavailable error');
+          return true;
+        }
+        // Final clause for checking if it's valid is if there's errors
+        return Array.isArray(conversation.errors);
       }
-      console.log('invalid graphql tweet');
-      if (
-        !tweet &&
-        typeof conversation.data?.tweetResult === 'object' &&
-        Object.keys(conversation.data?.tweetResult || {}).length === 0
-      ) {
-        console.log('tweet was not found');
-        return true;
-      }
-      if (tweet?.__typename === 'TweetUnavailable' && tweet.reason === 'NsfwLoggedOut') {
-        console.log('status is nsfw');
-        return true;
-      }
-      if (tweet?.__typename === 'TweetUnavailable' && tweet.reason === 'Protected') {
-        console.log('status is protected');
-        return true;
-      }
-      if (tweet?.__typename === 'TweetUnavailable') {
-        console.log('generic tweet unavailable error');
-        return true;
-      }
-      // Final clause for checking if it's valid is if there's errors
-      return Array.isArray(conversation.errors);
-    }
-  }) as Promise<TweetResultByRestIdResponse>;
+    }) as Promise<TweetResultByRestIdResponse | null>;
+
+  const response = await request(false);
+  /* X's edge cache serves guest GraphQL responses by URL for about a minute, regardless of the
+     guest token, and that includes "not found" answers. A lookup made right after a post is
+     published can cache a miss that every guest request then sees, so a missing result is
+     confirmed once against X's origin before the post is reported as nonexistent. */
+  if (!useElongator && isNotFound(response)) {
+    console.log('Tweet not found, confirming past the edge cache');
+    return (await request(true)) as TweetResultByRestIdResponse;
+  }
+  return response as TweetResultByRestIdResponse;
 };
 
 export const fetchByRestIds = async (
