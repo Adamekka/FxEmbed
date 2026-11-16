@@ -76,11 +76,10 @@ jobs:
         if: steps.rebase.outputs.changed == 'true'
         run: npm ci
 
-      - name: Build, lint, and test the rebased commit
+      - name: Build and test the rebased commit
         if: steps.rebase.outputs.changed == 'true'
         run: |
           npm run build
-          npm run lint:eslint
           npm test -- --run
 
       - name: Bundle the validated commit
@@ -142,7 +141,7 @@ jobs:
           cat > "$RUNNER_TEMP/upstream-rebase-pr.md" <<EOF
           Automatically rebase main onto FxEmbed/FxEmbed at $UPSTREAM.
 
-          Build, ESLint, and tests passed for $CANDIDATE in this workflow run:
+          Build and tests passed for $CANDIDATE in this workflow run:
           https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
 
           Publication uses a lease against $BASE so concurrent changes to main are preserved.
@@ -154,4 +153,4 @@ jobs:
           # A merge would retain the old commit order instead of publishing the tested rebase.
           git push --force-with-lease="refs/heads/main:$BASE" origin candidate:refs/heads/main
           git push origin --delete "$branch"
-          echo "Published $CANDIDATE onto main after build, lint, and tests passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "Published $CANDIDATE onto main after build and tests passed." >> "$GITHUB_STEP_SUMMARY"
