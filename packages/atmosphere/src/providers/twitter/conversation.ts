@@ -824,7 +824,7 @@ const filterBucketStatuses = (tweets: GraphQLTwitterStatus[], original: GraphQLT
  * @param id - Status ID to fetch
  * @param c - Hono context
  * @param processThread - Whether this is for thread processing (affects TweetDetail priority)
- * @returns The status response or null
+ * @returns The status response, or the code to report when no usable response arrived
  */
 const fetchSingleStatus = async (
   id: string,
@@ -832,11 +832,15 @@ const fetchSingleStatus = async (
   processThread = false,
   language?: string
 ): Promise<
-  | TweetDetailResponse
-  | TweetResultByRestIdResponse
-  | TweetResultsByIdsResponse
-  | TweetResultsByRestIdsResponse
-  | null
+  | {
+      kind: 'response';
+      response:
+        | TweetDetailResponse
+        | TweetResultByRestIdResponse
+        | TweetResultsByIdsResponse
+        | TweetResultsByRestIdsResponse;
+    }
+  | { kind: 'failed'; code: 404 | 500 }
 > => {
   // Determine weights based on context
   const isApiHost = (() => {
@@ -858,10 +862,16 @@ const fetchSingleStatus = async (
 
   // If account proxy is not available, only use TweetResultByRestId
   if (!hasElongator) {
+    /* The guest API answers a missing post with an empty `tweetResult`, which arrives here as a
+       response. Anything without `data` (no response after retries, or errors only, such as a
+       rate limit) means X failed to answer, not that the post is missing. */
     try {
-      return await fetchByRestId(id, host, undefined, language);
+      const response = await fetchByRestId(id, host, undefined, language);
+      return response?.data
+        ? { kind: 'response', response: response }
+        : { kind: 'failed', code: 500 };
     } catch (_e) {
-      return null;
+      return { kind: 'failed', code: 500 };
     }
   }
 
@@ -938,12 +948,17 @@ const fetchSingleStatus = async (
   ]);
 
   return results.status?.success
-    ? (results.status.data as
-        | TweetDetailResponse
-        | TweetResultByRestIdResponse
-        | TweetResultsByIdsResponse
-        | TweetResultsByRestIdsResponse)
-    : null;
+    ? {
+        kind: 'response',
+        response: results.status.data as
+          | TweetDetailResponse
+          | TweetResultByRestIdResponse
+          | TweetResultsByIdsResponse
+          | TweetResultsByRestIdsResponse
+      }
+    : /* Most validators reject an empty result, so a missing post also fails every method and
+         cannot be told apart from an outage here. */
+      { kind: 'failed', code: 404 };
 };
 
 /* Fetch and construct a Twitter thread */
@@ -960,19 +975,18 @@ export const constructTwitterThread = async (
   }
 
   // Fetch status using orchestrator with appropriate method prioritization
+  const fetched = await fetchSingleStatus(id, host, processThread, language);
+  if (fetched.kind === 'failed') {
+    writeDataPoint(host, language, null, String(fetched.code));
+    return { status: null, thread: null, author: null, code: fetched.code };
+  }
   let response:
     | TweetDetailResponse
     | TweetResultByRestIdResponse
     | TweetResultsByRestIdsResponse
     | TweetResultsByIdsResponse
-    | TweetResultByIdResponse
-    | null = await fetchSingleStatus(id, host, processThread, language);
+    | TweetResultByIdResponse = fetched.response;
   let status: APITwitterStatus;
-
-  if (!response) {
-    writeDataPoint(host, language, null, '404');
-    return { status: null, thread: null, author: null, code: 404 };
-  }
 
   // Check if we got TweetDetail response (for thread processing)
   const triedTweetDetail = !!(response as TweetDetailResponse)?.data
@@ -1415,7 +1429,8 @@ export const constructTwitterConversation = async (
 
   /* Reply pages (a cursor is set) only carry the next replies, not the focal tweet */
   if (fromChain === null && cursor) {
-    const focal = getResultFromResponse(await fetchSingleStatus(id, host, false, language));
+    const fetched = await fetchSingleStatus(id, host, false, language);
+    const focal = fetched.kind === 'response' ? getResultFromResponse(fetched.response) : null;
     if (isGraphQLTwitterStatus(focal)) {
       fromChain = focal;
     }
