@@ -1,6 +1,9 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { fetchByRestId } from '@fxembed/atmosphere/providers/twitter/conversation';
 import type { TwitterBuildHost } from '@fxembed/atmosphere/providers/twitter/build-host';
+import { app } from '../src/worker';
+import { Strings } from '../src/strings';
+import { botHeaders } from './helpers/data';
 import fixture from './mocks/TweetResultByRestId/20.json';
 
 afterEach(() => {
@@ -54,4 +57,32 @@ test('a missing guest post stays missing after one confirmation', async () => {
 
   expect(response.data?.tweetResult).toEqual({});
   expect(graphqlUrls).toHaveLength(2);
+});
+
+// Without the test harness's account proxy, the worker takes the guest API path.
+const requestWithoutAccountProxy = (url: string) =>
+  app.request(new Request(url, { method: 'GET', headers: botHeaders }), undefined, {});
+
+test('a guest API failure embeds as an API error', async () => {
+  stubGuestApi(() => ({ errors: [{ code: 88, message: 'Rate limit exceeded' }] }));
+
+  const response = await requestWithoutAccountProxy('https://fxtwitter.com/jack/status/20');
+
+  expect(await response.text()).toContain(Strings.ERROR_API_FAIL);
+});
+
+test('a missing guest post embeds as nonexistent', async () => {
+  stubGuestApi(() => ({ data: { tweetResult: {} } }));
+
+  const response = await requestWithoutAccountProxy('https://fxtwitter.com/jack/status/20');
+
+  expect(await response.text()).toContain(Strings.ERROR_TWEET_NOT_FOUND);
+});
+
+test('a guest API failure answers the status API with 500', async () => {
+  stubGuestApi(() => ({ errors: [{ code: 88, message: 'Rate limit exceeded' }] }));
+
+  const response = await requestWithoutAccountProxy('https://api.fxtwitter.com/2/status/20');
+
+  expect(response.status).toBe(500);
 });
