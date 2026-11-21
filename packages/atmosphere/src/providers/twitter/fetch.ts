@@ -72,6 +72,16 @@ export const twitterFetch = async (
   const cache =
     typeof caches !== 'undefined' ? (caches as unknown as { default: Cache }).default : null;
 
+  const purgeCachedGuestToken = () => {
+    try {
+      if (host.waitUntil && cache) {
+        host.waitUntil(cache.delete(guestTokenRequestCacheDummy.clone(), { ignoreMethod: true }));
+      }
+    } catch (error) {
+      console.error((error as Error).stack);
+    }
+  };
+
   while (apiAttempts < API_ATTEMPTS) {
     const csrfToken = crypto.randomUUID().replace(/-/g, '');
 
@@ -224,12 +234,8 @@ export const twitterFetch = async (
         console.log('Tweet was not found');
         return null;
       }
-      try {
-        if (!useElongator && cache && host.waitUntil) {
-          host.waitUntil(cache.delete(guestTokenRequestCacheDummy.clone(), { ignoreMethod: true }));
-        }
-      } catch (error) {
-        console.error((error as Error).stack);
+      if (!useElongator) {
+        purgeCachedGuestToken();
       }
       if (useElongator) {
         if (elongatorRequired) {
@@ -241,6 +247,16 @@ export const twitterFetch = async (
       }
       newTokenGenerated = true;
       useElongator = false;
+      continue;
+    }
+
+    /* X rejects a stale guest token with 403 (code 239) and an exhausted one with 429 (code 88).
+       Both bodies carry `errors`, which the GraphQL validators accept as a final answer, so the
+       post would fail to embed instead of being retried. Retry with a fresh token. */
+    if (!useElongator && (apiRequest?.status === 403 || apiRequest?.status === 429)) {
+      console.log(`Guest API answered ${apiRequest.status}, retrying with a new guest token`);
+      purgeCachedGuestToken();
+      newTokenGenerated = true;
       continue;
     }
 
@@ -260,13 +276,7 @@ export const twitterFetch = async (
     console.log(`Remaining rate limit: ${remainingRateLimit} requests`);
     if (!useElongator && remainingRateLimit < 10) {
       console.log(`Purging token on this edge due to low rate limit remaining`);
-      try {
-        if (host.waitUntil && cache) {
-          host.waitUntil(cache.delete(guestTokenRequestCacheDummy.clone(), { ignoreMethod: true }));
-        }
-      } catch (error) {
-        console.error((error as Error).stack);
-      }
+      purgeCachedGuestToken();
     }
 
     if (validateFunction && !validateFunction(response)) {
