@@ -25,7 +25,8 @@ const stubGuestApi = (respond: (url: URL) => unknown) => {
         return new Response(JSON.stringify({ guest_token: '1' }));
       }
       graphqlUrls.push(url);
-      return new Response(JSON.stringify(respond(url)));
+      const answer = respond(url);
+      return answer instanceof Response ? answer : new Response(JSON.stringify(answer));
     })
   );
   return graphqlUrls;
@@ -57,6 +58,23 @@ test('a missing guest post stays missing after one confirmation', async () => {
 
   expect(response.data?.tweetResult).toEqual({});
   expect(graphqlUrls).toHaveLength(2);
+});
+
+test('a rejected guest token is replaced and the request retried', async () => {
+  const rejections = [
+    new Response(JSON.stringify({ errors: [{ code: 239, message: 'Bad guest token' }] }), {
+      status: 403
+    }),
+    new Response(JSON.stringify({ errors: [{ code: 88, message: 'Rate limit exceeded' }] }), {
+      status: 429
+    })
+  ];
+  const graphqlUrls = stubGuestApi(() => rejections.shift() ?? fixture);
+
+  const response = await fetchByRestId('20', guestHost, false, undefined);
+
+  expect(response.data?.tweetResult?.result).toEqual(fixture.data.tweetResult.result);
+  expect(graphqlUrls).toHaveLength(3);
 });
 
 // Without the test harness's account proxy, the worker takes the guest API path.
